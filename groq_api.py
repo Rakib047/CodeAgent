@@ -29,7 +29,7 @@ def download_file(owner: str, repo: str, path: str, branch: str = "main"):
         return f"Error loading file: {res.status_code}"
 
 # Initialize Groq client with your API key from environment
-groq_api_key = "give your own key"
+groq_api_key = "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"
 if not groq_api_key:
     st.warning("Set your GROQ_API_KEY environment variable for AI analysis")
 
@@ -70,7 +70,7 @@ def analyze_code_with_groq(code_snippet):
     return response.choices[0].message.content
 
 
-def refactor_code_with_groq(code_snippet):
+def refactor_code_with_groq(code_snippet, python_version="python3"):
     if not client:
         return "Groq API key not set or client not initialized."
     messages = [
@@ -81,7 +81,9 @@ def refactor_code_with_groq(code_snippet):
                 "Given legacy Python 2 code, suggest a modern, idiomatic, and "
                 "clean refactored version of the code focusing on readability, modularity, "
                 "and best practices. "
-                "Do not change the logic but improve syntax and structure."
+                "Do not change the logic but improve syntax and structure. "
+                "Refactor the code according to the following Python version: "
+                + python_version
             ),
         },
         {
@@ -99,9 +101,43 @@ def refactor_code_with_groq(code_snippet):
         messages=messages,
         temperature=0.7,
         top_p=0.9,
-        max_completion_tokens=2048,
+        max_completion_tokens=512,
     )
     return response.choices[0].message.content
+
+
+# def generate_tests_with_groq(code_snippet):
+#     if not client:
+#         return "Groq API key not set or client not initialized."
+#     messages = [
+#         {
+#             "role": "system",
+#             "content": (
+#                 "You are an expert Python developer specialized in writing test cases. "
+#                 "Generate unit test functions for the given Python 2 code. "
+#                 "Use unittest framework style. "
+#                 "Include meaningful test cases for all public methods and functions."
+#             ),
+#         },
+#         {
+#             "role": "user",
+#             "content": (
+#                 "Generate Python 2 compatible unit tests for the following code:\n\n"
+#                 + code_snippet
+#             ),
+#         },
+#     ]
+
+#     response = client.chat.completions.create(
+#         model="llama-3.1-8b-instant",
+#         messages=messages,
+#         temperature=0.7,
+#         top_p=0.9,
+#         max_completion_tokens=512,
+#     )
+#     return response.choices[0].message.content
+
+
 
 
 # ---------- UI ----------
@@ -135,6 +171,38 @@ if github_url:
                             st.error(f"Failed to analyze code: {e}")
                 else:
                     st.warning("No code content to analyze.")
+
+                                # Refactor Code Button with Python version input
+            python_version = st.text_input(
+                "Enter the Python version for refactoring (e.g., python3.6, python3.7, etc.):"
+            )
+
+            if st.button("Suggest Code Refactor with AI"):
+                if content and python_version:
+                    with st.spinner("Generating refactor suggestion..."):
+                        try:
+                            refactor_result = refactor_code_with_groq(content, python_version)
+                            st.subheader("AI Refactor Suggestion:")
+                            st.code(refactor_result, language=selected_file.split('.')[-1] if '.' in selected_file else "python")
+                        except Exception as e:
+                            st.error(f"Failed to generate refactor suggestion: {e}")
+                elif not python_version:
+                    st.warning("Please specify a Python version for refactoring.")
+                else:
+                    st.warning("No code content to refactor.")
+
+            # # Generate Tests Button
+            # if st.button("Generate Unit Tests with AI"):
+            #     if content:
+            #         with st.spinner("Generating test functions..."):
+            #             try:
+            #                 tests_result = generate_tests_with_groq(content)
+            #                 st.subheader("AI Generated Test Functions:")
+            #                 st.code(tests_result, language="python")
+            #             except Exception as e:
+            #                 st.error(f"Failed to generate test functions: {e}")
+            #     else:
+            #         st.warning("No code content to generate tests for.")
         else:
             st.warning("No files found or invalid repository/branch.")
     except Exception as e:
@@ -142,14 +210,14 @@ if github_url:
 
 
 # Refactor button
-if st.button("Suggest Code Refactor with AI"):
-    if content:
-        with st.spinner("Generating refactor suggestion..."):
-            try:
-                refactor_result = refactor_code_with_groq(content)
-                st.subheader("AI Refactor Suggestion:")
-                st.code(refactor_result, language=selected_file.split('.')[-1] if '.' in selected_file else "python")
-            except Exception as e:
-                st.error(f"Failed to generate refactor suggestion: {e}")
-    else:
-        st.warning("No code content to refactor.")
+# if st.button("Suggest Code Refactor with AI"):
+#     if content:
+#         with st.spinner("Generating refactor suggestion..."):
+#             try:
+#                 refactor_result = refactor_code_with_groq(content)
+#                 st.subheader("AI Refactor Suggestion:")
+#                 st.code(refactor_result, language=selected_file.split('.')[-1] if '.' in selected_file else "python")
+#             except Exception as e:
+#                 st.error(f"Failed to generate refactor suggestion: {e}")
+#     else:
+#         st.warning("No code content to refactor.")
