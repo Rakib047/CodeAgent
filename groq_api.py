@@ -4,7 +4,7 @@ import os
 from groq import Groq  # Groq Python SDK client
 
 st.set_page_config(page_title="GitHub Repo Browser", layout="wide")
-st.title("📂 GitHub Repository File Browser")
+st.title("CodeAgent: GitHub Repository Code Analysis and Refactoring")
 
 # ---------- Functions ----------
 @st.cache_data(show_spinner=False)
@@ -101,9 +101,11 @@ def refactor_code_with_groq(code_snippet, python_version="python3"):
         messages=messages,
         temperature=0.7,
         top_p=0.9,
-        max_completion_tokens=512,
+        max_completion_tokens=1024,
     )
+
     return response.choices[0].message.content
+    
 
 
 # def generate_tests_with_groq(code_snippet):
