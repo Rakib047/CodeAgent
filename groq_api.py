@@ -29,7 +29,7 @@ def download_file(owner: str, repo: str, path: str, branch: str = "main"):
         return f"Error loading file: {res.status_code}"
 
 # Initialize Groq client with your API key from environment
-groq_api_key = "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"
+groq_api_key = "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"
 if not groq_api_key:
     st.warning("Set your GROQ_API_KEY environment variable for AI analysis")
 
