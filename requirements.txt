@@ -1,6 +1,13 @@
-requests==2.18.4
-six==1.15.0             # Python 2/3 compatibility utilities
-python-dateutil==2.7.5  # Powerful extensions to datetime module
-enum34==1.1.10          # Enum support for Python 2.7
-futures==3.3.0          # Backport of concurrent.futures
+# requests==2.18.4
+# six==1.15.0             # Python 2/3 compatibility utilities
+# python-dateutil==2.7.5  # Powerful extensions to datetime module
+# enum34==1.1.10          # Enum support for Python 2.7
+# futures==3.3.0          # Backport of concurrent.futures
 
+
+streamlit
+groq
+requests
+langchain
+langchain-groq
+python-dotenv
