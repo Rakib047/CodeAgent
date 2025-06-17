@@ -14,6 +14,7 @@ from src.utils.token_utils import estimate_tokens
 from src.llm.groq_client import get_groq_client
 from src.llm.analyzer import analyze_large_code
 from src.llm.refactorer import refactor_large_code
+from src.llm.test_case_generator import generate_test_cases
 
 import sys
 import os
@@ -38,38 +39,38 @@ if url:
         st.code(content, language='python')
         client = get_groq_client()
 
-        col1, col2 = st.columns(2)
-
         # Button: Analyze Code
-        with col1:
-            if st.button("🔍 Analyze Code"):
-                st.session_state.analysis_result = analyze_large_code(client, content, st)
-
-            # Show previous analysis if available
-            if "analysis_result" in st.session_state:
-                st.markdown("### 🔍 Code Analysis")
-                st.markdown(st.session_state.analysis_result)
+        if st.button("🔍 Analyze Code"):
+            st.session_state.analysis_result = analyze_large_code(client, content, st)
+        # Show previous analysis if available
+        if "analysis_result" in st.session_state:
+            st.markdown("### 🔍 Code Analysis")
+            st.markdown(st.session_state.analysis_result)
 
         # Button: Refactor Code
-        with col2:
-            if st.button("🔧 Refactor Code"):
-                st.session_state.refactor_step = 1  # Enable version input
+        if st.button("🔧 Refactor Code"):
+            st.session_state.refactor_step = 1  # Enable version input
 
-            # Refactor step
-            if st.session_state.get("refactor_step") == 1:
-                python_version = st.text_input("🐍 Enter Python Version (e.g., python3.10)", key="version_input")
+        # Refactor step
+        if st.session_state.get("refactor_step") == 1:
+            python_version = st.text_input("🐍 Enter Python Version (e.g., python3.10)", key="version_input")
 
-                if st.button("✅ Start Refactoring"):
-                    if python_version.strip() == "":
-                        st.warning("Please enter a Python version.")
-                    else:
-                        st.session_state.refactor_result = refactor_large_code(client, content, st, python_version.strip())
-                        st.session_state.refactor_step = 0  # Reset step
+            if st.button("✅ Start Refactoring"):
+                if python_version.strip() == "":
+                    st.warning("Please enter a Python version.")
+                else:
+                    st.session_state.refactor_result = refactor_large_code(client, content, st, python_version.strip())
+                    st.session_state.refactor_step = 0  # Reset step
+        # Show previous refactor result if available
+        if "refactor_result" in st.session_state:
+            st.markdown("### 🔧 Refactored Code")
+            st.code(st.session_state.refactor_result, language="python")
+        
+            # Generating Test cases for Refactored code
+            if st.button("Generate Test Cases"):
+                st.session_state.generated_tese_tases = generate_test_cases(client, st.session_state.refactor_result)
+                st.code(st.session_state.generated_tese_tases, language = 'python')
 
-            # Show previous refactor result if available
-            if "refactor_result" in st.session_state:
-                st.markdown("### 🔧 Refactored Code")
-                st.code(st.session_state.refactor_result, language="python")
 
 
     except Exception as e:
