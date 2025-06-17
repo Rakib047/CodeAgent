@@ -1,3 +1,13 @@
+
+import sys
+import os
+
+# Dynamically add the root folder (/legacy_repo) to sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.abspath(os.path.join(current_dir, ".."))
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+
 import streamlit as st
 from src.utils.github_utils import get_repo_files, download_file
 from src.utils.token_utils import estimate_tokens
@@ -5,9 +15,7 @@ from src.llm.groq_client import get_groq_client
 from src.llm.analyzer import analyze_large_code
 from src.llm.refactorer import refactor_code_with_groq
 
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 # Session state flags
 if "show_python_input" not in st.session_state:
