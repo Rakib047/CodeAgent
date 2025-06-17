@@ -39,25 +39,38 @@ if url:
         client = get_groq_client()
 
         col1, col2 = st.columns(2)
+
+        # Button: Analyze Code
         with col1:
             if st.button("🔍 Analyze Code"):
-                analysis = analyze_large_code(client, content, st)
-                st.markdown(analysis)
+                st.session_state.analysis_result = analyze_large_code(client, content, st)
 
+            # Show previous analysis if available
+            if "analysis_result" in st.session_state:
+                st.markdown("### 🔍 Code Analysis")
+                st.markdown(st.session_state.analysis_result)
+
+        # Button: Refactor Code
         with col2:
             if st.button("🔧 Refactor Code"):
-                st.session_state.refactor_step = 1  # Show version input
+                st.session_state.refactor_step = 1  # Enable version input
 
-        # Show version input only after button click
-        if st.session_state.refactor_step == 1:
-            python_version = st.text_input("🐍 Enter Python Version (e.g., python3.10)", key="version_input")
-            if st.button("✅ Start Refactoring"):
-                if python_version.strip() == "":
-                    st.warning("Please enter a Python version.")
-                else:
-                    refactor = refactor_large_code(client, content, st, python_version=python_version.strip())
-                    st.code(refactor, language='python')
-                    st.session_state.refactor_step = 0  # Reset after success
+            # Refactor step
+            if st.session_state.get("refactor_step") == 1:
+                python_version = st.text_input("🐍 Enter Python Version (e.g., python3.10)", key="version_input")
+
+                if st.button("✅ Start Refactoring"):
+                    if python_version.strip() == "":
+                        st.warning("Please enter a Python version.")
+                    else:
+                        st.session_state.refactor_result = refactor_large_code(client, content, st, python_version.strip())
+                        st.session_state.refactor_step = 0  # Reset step
+
+            # Show previous refactor result if available
+            if "refactor_result" in st.session_state:
+                st.markdown("### 🔧 Refactored Code")
+                st.code(st.session_state.refactor_result, language="python")
+
 
     except Exception as e:
         st.error(f"❌ Error: {e}")
