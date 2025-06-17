@@ -1,90 +1,61 @@
+from .groq_client import get_groq_client
 from ..utils.token_utils import estimate_tokens, split_code_into_chunks
 
-import streamlit as st
+import re
 
-def refactor_code_chunk(client,code_chunk, python_version="python3"):
-    """Refactor a single chunk of code using Groq"""
-    if not client:
-        return "Groq API key not set or client not initialized."
 
+def clean_refactored_output(text: str) -> str:
+    # Remove triple backticks and language tags
+    text = re.sub(r"```(?:python)?\n?", "", text)
+    text = re.sub(r"\n?```$", "", text)
+
+    # Remove everything after 'Changes:', 'Note:', etc.
+    for marker in ["Changes:", "Note:", "Explanation:"]:
+        if marker in text:
+            text = text.split(marker)[0].strip()
+
+    return text.strip()
+
+def extract_code_block(text):
+    """Extracts the first Python code block from a markdown response."""
+    match = re.search(r"```(?:python)?\s*(.*?)```", text, re.DOTALL)
+    return match.group(1).strip() if match else text.strip()
+
+def refactor_code_chunk(client, code_chunk, python_version="python3"):
     messages = [
         {
             "role": "system",
             "content": (
-                "You are an expert Python developer and refactoring assistant. "
-                "Given legacy Python code, provide the updated python version syntax code keeping the code same. "
-                #"Focus on readability, modularity, and best practices. "
-                "Preserve the original logic and functionality. "
-                f"Target Python version: {python_version}. "
-                "IMPORTANT: Provide ONLY the refactored code without explanations or markdown formatting."
-            ),
+                f"You are a Python expert. Refactor the following code into clean, modern {python_version} syntax.\n"
+                "Return ONLY the pure refactored code. DO NOT include markdown formatting (like ```), comments, or explanations.\n"
+                "Do NOT include lists of changes, analysis, or any extra text. Just return clean code only."
+            )
         },
         {
             "role": "user",
-            "content": (
-                "Refactor this Python code snippet. Return only the refactored code:\n\n"
-                + code_chunk
-            ),
-        },
+            "content": f"Refactor this Python code:\n\n{code_chunk}"
+        }
     ]
 
-    try:
-        response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=messages,
-            temperature=0.3,
-            top_p=0.9,
-            max_completion_tokens=4096,
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        return f"# Error refactoring this chunk: {str(e)}\n{code_chunk}"
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=messages,
+        temperature=0.3,
+        top_p=0.9,
+        max_completion_tokens=4096
+    )
+    raw_output = response.choices[0].message.content.strip()
+    return clean_refactored_output(raw_output)
 
 
-def refactor_code_with_groq(client,code_snippet, python_version="python3"):
-    """Refactor code with chunking support for large files using Groq"""
-    if not client:
-        return "Groq API key not set or client not initialized."
+def refactor_large_code(client, code_snippet, st=None, python_version="python3"):
+    tokens = estimate_tokens(code_snippet)
+    if tokens <= 2000:
+        return refactor_code_chunk(client, code_snippet, python_version)
 
-    estimated_tokens = estimate_tokens(code_snippet)
-
-    if estimated_tokens <= 2000:
-        return refactor_code_chunk(client,code_snippet, python_version)
-
-    st.info(f"Large file detected ({estimated_tokens} estimated tokens). Processing in chunks...")
-    chunks = split_code_into_chunks(code_snippet, max_tokens=2000)
-
-    refactored_chunks = []
-    progress_bar = st.progress(0)
-
-    for i, chunk in enumerate(chunks):
-        st.write(f"Processing chunk {i+1}/{len(chunks)}...")
-        refactored_chunk = refactor_code_chunk(chunk, python_version)
-        refactored_chunks.append(refactored_chunk)
-        progress_bar.progress((i + 1) / len(chunks))
-
-    combined_code = '\n\n'.join(refactored_chunks)
-    cleaned_code = clean_refactored_code(combined_code)
-
-    st.success("Refactoring completed!")
-    return cleaned_code
-
-
-def clean_refactored_code(code):
-    """Clean up common issues in refactored code"""
-    lines = code.split('\n')
-    cleaned_lines = []
-    seen_imports = set()
-
-    for line in lines:
-        stripped = line.strip()
-        # Skip duplicate imports
-        if stripped.startswith(('import ', 'from ')):
-            if stripped not in seen_imports:
-                seen_imports.add(stripped)
-                cleaned_lines.append(line)
-        else:
-            cleaned_lines.append(line)
-
-    return '\n'.join(cleaned_lines)
-
+    if st: st.info("🔧 Refactoring code in chunks...")
+    chunks = split_code_into_chunks(code_snippet)
+    return "\n\n".join([
+        extract_code_block(refactor_code_chunk(client, chunk, python_version))
+        for chunk in chunks
+    ])

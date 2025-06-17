@@ -13,15 +13,15 @@ from src.utils.github_utils import get_repo_files, download_file
 from src.utils.token_utils import estimate_tokens
 from src.llm.groq_client import get_groq_client
 from src.llm.analyzer import analyze_large_code
-from src.llm.refactorer import refactor_code_with_groq
+from src.llm.refactorer import refactor_large_code
 
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-
-# Session state flags
-if "show_python_input" not in st.session_state:
-    st.session_state.show_python_input = False
-if "ready_to_refactor" not in st.session_state:
-    st.session_state.ready_to_refactor = False
+# Set up session state for conditional flow
+if "refactor_step" not in st.session_state:
+    st.session_state.refactor_step = 0  # 0 = idle, 1 = waiting for input
 
 st.set_page_config(page_title="CodeAgent", layout="wide")
 st.title("🧠 CodeAgent: Code Analyzer and Refactorer")
@@ -39,7 +39,6 @@ if url:
         client = get_groq_client()
 
         col1, col2 = st.columns(2)
-
         with col1:
             if st.button("🔍 Analyze Code"):
                 analysis = analyze_large_code(client, content, st)
@@ -47,15 +46,20 @@ if url:
 
         with col2:
             if st.button("🔧 Refactor Code"):
-                st.session_state.show_python_input = True
+                st.session_state.refactor_step = 1  # Show version input
 
-        if st.session_state.show_python_input:
-            python_version = st.text_input("🐍 Enter Target Python Version (e.g., python3.10)", key="version_input")
-
+        # Show version input only after button click
+        if st.session_state.refactor_step == 1:
+            python_version = st.text_input("🐍 Enter Python Version (e.g., python3.10)", key="version_input")
             if st.button("✅ Start Refactoring"):
-                refactor = refactor_code_with_groq(client, content, python_version=python_version)
-                st.code(refactor, language='python')
-                st.session_state.show_python_input = False  # Reset after completion
+                if python_version.strip() == "":
+                    st.warning("Please enter a Python version.")
+                else:
+                    refactor = refactor_large_code(client, content, st, python_version=python_version.strip())
+                    st.code(refactor, language='python')
+                    st.session_state.refactor_step = 0  # Reset after success
 
     except Exception as e:
         st.error(f"❌ Error: {e}")
+
+
