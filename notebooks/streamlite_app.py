@@ -1,4 +1,3 @@
-
 import sys
 import os
 
@@ -14,6 +13,7 @@ from src.utils.token_utils import estimate_tokens
 from src.llm.groq_client import get_groq_client
 from src.llm.analyzer import analyze_large_code
 from src.llm.refactorer import refactor_large_code
+from src.llm.doc_generator import generate_documentation  # Import the doc generator
 
 import sys
 import os
@@ -22,6 +22,18 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Set up session state for conditional flow
 if "refactor_step" not in st.session_state:
     st.session_state.refactor_step = 0  # 0 = idle, 1 = waiting for input
+
+if "analysis_result" not in st.session_state:
+    st.session_state.analysis_result = ""  # Default empty
+
+if "refactor_result" not in st.session_state:
+    st.session_state.refactor_result = ""  # Default empty
+
+if "documentation_result" not in st.session_state:
+    st.session_state.documentation_result = ""  # Default empty
+
+if "python_version" not in st.session_state:
+    st.session_state.python_version = ""  # Default empty
 
 st.set_page_config(page_title="CodeAgent", layout="wide")
 st.title("🧠 CodeAgent: Code Analyzer and Refactorer")
@@ -46,7 +58,7 @@ if url:
                 st.session_state.analysis_result = analyze_large_code(client, content, st)
 
             # Show previous analysis if available
-            if "analysis_result" in st.session_state:
+            if st.session_state.analysis_result:
                 st.markdown("### 🔍 Code Analysis")
                 st.markdown(st.session_state.analysis_result)
 
@@ -58,6 +70,8 @@ if url:
             # Refactor step
             if st.session_state.get("refactor_step") == 1:
                 python_version = st.text_input("🐍 Enter Python Version (e.g., python3.10)", key="version_input")
+                # Store python_version in session_state to avoid "not defined" error
+                st.session_state.python_version = python_version.strip()
 
                 if st.button("✅ Start Refactoring"):
                     if python_version.strip() == "":
@@ -67,12 +81,25 @@ if url:
                         st.session_state.refactor_step = 0  # Reset step
 
             # Show previous refactor result if available
-            if "refactor_result" in st.session_state:
+            if st.session_state.refactor_result:
                 st.markdown("### 🔧 Refactored Code")
                 st.code(st.session_state.refactor_result, language="python")
 
+                # Add "Generate Documentation" button after refactoring
+                if st.button("📜 Generate Documentation"):
+                    if st.session_state.refactor_result:
+                        # Use the stored python_version from session state
+                        python_version = st.session_state.python_version
+                        documentation = generate_documentation(st.session_state.refactor_result, python_version=python_version, client=client)
+                        st.session_state.documentation_result = documentation  # Store documentation in session state
+                        st.markdown(documentation)
+                    else:
+                        st.warning("No refactored code available to generate documentation.")
+
+        # Display generated documentation if available
+        if st.session_state.documentation_result:
+            st.markdown("### 📜 Generated Documentation")
+            st.markdown(st.session_state.documentation_result)
 
     except Exception as e:
         st.error(f"❌ Error: {e}")
-
-
