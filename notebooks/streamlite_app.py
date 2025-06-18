@@ -18,6 +18,8 @@ from src.llm.test_case_generator import generate_test_cases
 from src.llm.doc_generator import generate_documentation
 from src.llm.code_diff import generate_full_diff
 
+from src.utils.github_utils import commit_file 
+
 
 
 # Set up session state for conditional flow
@@ -65,6 +67,15 @@ if url:
         if "refactor_result" in st.session_state:
             st.markdown("### 🔧 Refactored Code")
             st.code(st.session_state.refactor_result, language="python")
+
+            if st.button("💾 Save Refactored Code to GitHub"):
+                try:
+                    commit_message = st.text_input("Commit message", "Refactored code via CodeAgent")
+                    # Use the same file path as the one selected
+                    commit_file(owner, repo, file, st.session_state.refactor_result, commit_message, branch)
+                    st.success("Code committed to GitHub!")
+                except Exception as e:
+                    st.error(f"Failed to commit: {e}")
 
 
         
