@@ -16,10 +16,9 @@ from src.llm.analyzer import analyze_large_code
 from src.llm.refactorer import refactor_large_code
 from src.llm.test_case_generator import generate_test_cases
 from src.llm.doc_generator import generate_documentation
+from src.llm.code_diff import generate_full_diff
 
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 # Set up session state for conditional flow
 if "refactor_step" not in st.session_state:
@@ -54,8 +53,8 @@ if url:
 
         # Refactor step
         if st.session_state.get("refactor_step") == 1:
-            python_version = st.text_input("🐍 Enter Python Version (e.g., python3.10)", key="version_input")
-            st.session_state.python_version=python_version
+            st.session_state.python_version = st.text_input("🐍 Enter Python Version (e.g., python3.10)", key="version_input")
+            python_version=st.session_state.python_version
             if st.button("✅ Start Refactoring"):
                 if python_version.strip() == "":
                     st.warning("Please enter a Python version.")
@@ -66,6 +65,8 @@ if url:
         if "refactor_result" in st.session_state:
             st.markdown("### 🔧 Refactored Code")
             st.code(st.session_state.refactor_result, language="python")
+
+
         
             # Generating Test cases for Refactored code
             if st.button("Generate Test Cases"):
@@ -77,16 +78,17 @@ if url:
                 if st.session_state.refactor_result:
                     # Use the stored python_version from session state
                     python_version = st.session_state.python_version
-                    documentation = generate_documentation(st.session_state.refactor_result, python_version=python_version, client=client)
-                    st.session_state.documentation_result = documentation  # Store documentation in session state
+                    st.session_state.documentation_result = generate_documentation(st.session_state.refactor_result, python_version=python_version, client=client)
                     st.markdown(st.session_state.documentation_result)
                 else:
                     st.warning("No refactored code available to generate documentation.")
 
-                # Display generated documentation if available
-                # if st.session_state.documentation_result:
-                #     st.markdown("### 📜 Generated Documentation")
-                #     st.markdown(st.session_state.documentation_result)
+                # Show Full Code Diff button
+            if st.button("📊 Show Full Code Diff"):
+                st.session_state.code_diff = generate_full_diff(content, st.session_state.refactor_result)
+                st.code(st.session_state.code_diff, language="diff")
+            
+
 
 
     except Exception as e:
