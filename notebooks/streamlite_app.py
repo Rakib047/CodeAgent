@@ -16,10 +16,9 @@ from src.llm.analyzer import analyze_large_code
 from src.llm.refactorer import refactor_large_code
 from src.llm.test_case_generator import generate_test_cases
 from src.llm.doc_generator import generate_documentation
+from src.llm.code_diff import generate_full_diff
 
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 
 # Set up session state for conditional flow
 if "refactor_step" not in st.session_state:
@@ -66,6 +65,8 @@ if url:
         if "refactor_result" in st.session_state:
             st.markdown("### 🔧 Refactored Code")
             st.code(st.session_state.refactor_result, language="python")
+
+
         
             # Generating Test cases for Refactored code
             if st.button("Generate Test Cases"):
@@ -81,6 +82,13 @@ if url:
                     st.markdown(st.session_state.documentation_result)
                 else:
                     st.warning("No refactored code available to generate documentation.")
+
+                # Show Full Code Diff button
+            if st.button("📊 Show Full Code Diff"):
+                st.session_state.code_diff = generate_full_diff(content, st.session_state.refactor_result)
+                st.code(st.session_state.code_diff, language="diff")
+            
+
 
 
     except Exception as e:
