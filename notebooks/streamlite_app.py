@@ -68,12 +68,21 @@ if url:
             st.markdown("### 🔧 Refactored Code")
             st.code(st.session_state.refactor_result, language="python")
 
-            if st.button("💾 Save Refactored Code to GitHub"):
+                # --- Add branch input here ---
+            commit_branch = st.text_input("Branch to commit to", value=branch, key="commit_branch")
+            commit_message = st.text_input("Commit message", "Refactored code via CodeAgent", key="commit_message")
+
+            if st.button("💾 Push Refactored Code to GitHub Repository"):
                 try:
-                    commit_message = st.text_input("Commit message", "Refactored code via CodeAgent")
-                    # Use the same file path as the one selected
-                    commit_file(owner, repo, file, st.session_state.refactor_result, commit_message, branch)
-                    st.success("Code committed to GitHub!")
+                    commit_file(
+                        owner,
+                        repo,
+                        file,
+                        st.session_state.refactor_result,
+                        commit_message,
+                        commit_branch  # Use the user-specified branch
+                    )
+                    st.success(f"Code committed to GitHub branch '{commit_branch}'!")
                 except Exception as e:
                     st.error(f"Failed to commit: {e}")
 
