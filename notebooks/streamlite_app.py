@@ -17,6 +17,7 @@ from src.llm.test_case_generator import generate_test_cases
 from src.llm.doc_generator import generate_documentation
 from src.llm.code_diff import generate_full_diff
 from src.llm.refactor_code_optimizer import optimize_refactored_code
+from src.utils.github_utils import commit_file 
 
 # --- Setup ---
 st.set_page_config(page_title="CodeAgent", layout="wide")
@@ -36,8 +37,20 @@ if url:
     branch = st.text_input("🌿 Branch", value="main")
 
     try:
+        # Track previously selected file
+        if 'prev_file' not in st.session_state:
+            st.session_state.prev_file = None
+
         files = get_repo_files(owner, repo, branch)
         file = st.selectbox("📄 Choose File", files)
+
+        # Reset session state when a new file is selected
+        if file != st.session_state.prev_file:
+            for key in st.session_state.keys():
+                del st.session_state[key]
+            st.session_state.prev_file = file  # Update with new file selection
+
+        # Re-download and display the code
         content = download_file(owner, repo, file, branch)
         st.code(content, language="python")
 
@@ -46,79 +59,104 @@ if url:
         st.divider()
 
         # --- Buttons ---
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("🔍 Analyze Code"):
-                st.session_state.analysis_result = analyze_large_code(client, content, st)
-        with col2:
-            if st.button("🔧 Refactor Code"):
-                st.session_state.refactor_step = 1
-        with col3:
-            if st.button("📊 Show Full Code Diff") and "refactor_result" in st.session_state:
-                st.session_state.code_diff = generate_full_diff(content, st.session_state.refactor_result)
-
+        
+        if st.button("🔍 Analyze Code"):
+            st.session_state.analysis_result = analyze_large_code(client, content, st)
         # --- Analysis Result ---
         if "analysis_result" in st.session_state:
             with st.expander("🔍 Code Analysis", expanded=True):
                 st.markdown(st.session_state.analysis_result)
 
+        st.divider()
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔧 Refactor Code"):
+                st.session_state.refactor_step = 1
+        with col2:
+            if st.button("📊 Show Full Code Diff") and "refactor_result" in st.session_state:
+                st.session_state.code_diff = generate_full_diff(content, st.session_state.refactor_result)
+
+         
+        col1, col2 = st.columns(2)
+        with col1:
         # --- Refactoring Input ---
-        if st.session_state.refactor_step == 1:
-            python_version = st.text_input("🐍 Python Version (e.g., python3.10)", key="version_input")
-            if st.button("✅ Start Refactoring"):
-                if not python_version.strip():
-                    st.warning("Please enter a Python version.")
-                else:
-                    st.session_state.python_version = python_version.strip()
-                    st.session_state.refactor_result = refactor_large_code(client, content, st, python_version.strip())
-                    st.session_state.refactor_step = 0
+            if "refactor_step" in st.session_state and st.session_state.refactor_step == 1:
+                python_version = st.text_input("🐍 Python Version (e.g., python3.10)", key="version_input")
+                if st.button("✅ Start Refactoring"):
+                    if not python_version.strip():
+                        st.warning("Please enter a Python version.")
+                    else:
+                        st.session_state.python_version = python_version.strip()
+                        st.session_state.refactor_result = refactor_large_code(client, content, st, python_version.strip())
+                        st.session_state.refactor_step = 0
+            # --- Refactored Code ---
+            if "refactor_result" in st.session_state:
+                st.markdown("### 🛠 Refactored Code")
+                st.code(st.session_state.refactor_result, language="python")
 
-        # --- Refactored Code ---
+                # --- Regenerate with Instructions ---
+                with st.expander("♻️ Modify Refactored Code", expanded=False):
+                    if st.button("✏️ Re-generate"):
+                        st.session_state.regenerate_clicked = True
+
+                    if st.session_state.regenerate_clicked:
+                        instruction = st.text_input("📌 Instruction to update code", key="instruction_input")
+                        if st.button("🚀 Apply Modification"):
+                            if instruction.strip():
+                                st.session_state.refactor_result = optimize_refactored_code(
+                                    client,
+                                    st.session_state.refactor_result,
+                                    instruction.strip()
+                                )
+                                st.success("✅ Code regenerated.")
+                                st.session_state.regenerate_clicked = False
+        with col2:
+            if "code_diff" in st.session_state:
+                with st.expander("📊 Code Diff", expanded=True):
+                    st.code(st.session_state.code_diff, language="diff")
+
+        st.divider()
+
+        # --- Additional Features ---
         if "refactor_result" in st.session_state:
-            st.markdown("### 🛠 Refactored Code")
-            st.code(st.session_state.refactor_result, language="python")
-
-            # --- Regenerate with Instructions ---
-            with st.expander("♻️ Modify Refactored Code", expanded=False):
-                if st.button("✏️ Re-generate"):
-                    st.session_state.regenerate_clicked = True
-
-                if st.session_state.regenerate_clicked:
-                    instruction = st.text_input("📌 Instruction to update code", key="instruction_input")
-                    if st.button("🚀 Apply Modification"):
-                        if instruction.strip():
-                            st.session_state.refactor_result = optimize_refactored_code(
-                                client,
-                                st.session_state.refactor_result,
-                                instruction.strip()
-                            )
-                            st.success("✅ Code regenerated.")
-                            st.session_state.regenerate_clicked = False
-
-            st.divider()
-
-            # --- Additional Features ---
             col1, col2 = st.columns(2)
 
             with col1:
                 if st.button("🧪 Generate Test Cases"):
                     st.session_state.generated_test_cases = generate_test_cases(client, st.session_state.refactor_result)
+                if "generated_test_cases" in st.session_state:
                     st.code(st.session_state.generated_test_cases, language="python")
 
             with col2:
                 if st.button("📜 Generate Documentation"):
                     if st.session_state.python_version:
-                        doc = generate_documentation(
+                        st.session_state.doc_string = generate_documentation(
                             st.session_state.refactor_result,
                             python_version=st.session_state.python_version,
                             client=client
                         )
-                        st.markdown(doc)
                     else:
                         st.warning("Missing Python version.")
+                if "doc_string" in st.session_state: 
+                    st.markdown(st.session_state.doc_string)
+        # --- Add branch input here ---
+        commit_branch = st.text_input("Branch to commit to", value=branch, key="commit_branch")
+        commit_message = st.text_input("Commit message", "Refactored code via CodeAgent", key="commit_message")
 
-        if "code_diff" in st.session_state:
-            with st.expander("📊 Code Diff", expanded=True):
-                st.code(st.session_state.code_diff, language="diff")
+        if st.button("💾 Push Refactored Code to GitHub Repository"):
+            try:
+                commit_file(
+                    owner,
+                    repo,
+                    file,
+                    st.session_state.refactor_result,
+                    commit_message,
+                    commit_branch  # Use the user-specified branch
+                )
+                st.success(f"Code committed to GitHub branch '{commit_branch}'!")
+            except Exception as e:
+                st.error(f"Failed to commit: {e}")
+
+
     except Exception as e:
         st.error(f"❌ Error: {e}")
