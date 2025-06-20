@@ -1,6 +1,7 @@
 import requests
 import base64
 import streamlit as st
+import re
 
 def get_repo_files(owner, repo, branch="main"):
     url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1"
@@ -67,3 +68,24 @@ def commit_file(owner, repo, file_path, content, message, branch="main", base_br
     if res.status_code in [200, 201]:
         return res.json()
     raise Exception(f"GitHub commit error: {res.status_code} {res.text}")
+
+
+
+# def extract_python_packages(code):
+#     # Regular expression to extract import statements
+#     imports = re.findall(r'^\s*(?:import|from)\s+([a-zA-Z0-9_]+)', code, re.MULTILINE)
+#     return sorted(set(imports))  # Return unique packages sorted alphabetically
+
+# def get_requirements_from_python_files(owner, repo, branch="main"):
+#     files = get_repo_files(owner, repo, branch)
+#     python_files = [file for file in files if file.endswith('.py')]
+
+#     all_imports = set()
+#     for py_file in python_files:
+#         try:
+#             code = download_file(owner, repo, py_file, branch)
+#             all_imports.update(extract_python_packages(code))
+#         except Exception as e:
+#             st.error(f"Failed to process {py_file}: {e}")
+
+#     return sorted(all_imports)
