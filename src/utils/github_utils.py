@@ -67,3 +67,28 @@ def commit_file(owner, repo, file_path, content, message, branch="main", base_br
     if res.status_code in [200, 201]:
         return res.json()
     raise Exception(f"GitHub commit error: {res.status_code} {res.text}")
+
+
+# ----------Make Pull Request-------------
+def create_pull_request(owner, repo, head_branch, base_branch="main", title="CodeAgent Auto PR", body="This PR includes automatic refactored code updates."):
+    token = st.secrets["GITHUB_TOKEN"]
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github+json"
+    }
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
+    data = {
+        "title": title,
+        "head": head_branch,
+        "base": base_branch,
+        "body": body
+    }
+    response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code == 201:
+        pr_url = response.json().get("html_url", "N/A")
+        return {"success": True, "url": pr_url, "message": f"PR created: {pr_url}"}
+    elif response.status_code == 422 and "A pull request already exists" in response.text:
+        return {"success": False, "message": "A pull request already exists for this branch."}
+    else:
+        raise Exception(f"Failed to create pull request: {response.status_code} {response.text}")
