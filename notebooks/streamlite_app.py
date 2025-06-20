@@ -17,6 +17,7 @@ from src.llm.test_case_generator import generate_test_cases
 from src.llm.doc_generator import generate_documentation
 from src.llm.code_diff import generate_full_diff
 from src.llm.refactor_code_optimizer import optimize_refactored_code
+from src.utils.github_utils import commit_file 
 
 # --- Setup ---
 st.set_page_config(page_title="CodeAgent", layout="wide")
@@ -65,7 +66,7 @@ if url:
         if "analysis_result" in st.session_state:
             with st.expander("🔍 Code Analysis", expanded=True):
                 st.markdown(st.session_state.analysis_result)
-                
+
         st.divider()
         col1, col2 = st.columns(2)
         with col1:
@@ -138,6 +139,24 @@ if url:
                         st.warning("Missing Python version.")
                 if "doc_string" in st.session_state: 
                     st.markdown(st.session_state.doc_string)
+        # --- Add branch input here ---
+        commit_branch = st.text_input("Branch to commit to", value=branch, key="commit_branch")
+        commit_message = st.text_input("Commit message", "Refactored code via CodeAgent", key="commit_message")
+
+        if st.button("💾 Push Refactored Code to GitHub Repository"):
+            try:
+                commit_file(
+                    owner,
+                    repo,
+                    file,
+                    st.session_state.refactor_result,
+                    commit_message,
+                    commit_branch  # Use the user-specified branch
+                )
+                st.success(f"Code committed to GitHub branch '{commit_branch}'!")
+            except Exception as e:
+                st.error(f"Failed to commit: {e}")
+
 
     except Exception as e:
         st.error(f"❌ Error: {e}")
