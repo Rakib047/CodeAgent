@@ -94,7 +94,7 @@ if url:
                         st.session_state.refactor_step = 0
             # --- Refactored Code ---
             if "refactor_result" in st.session_state:
-                st.markdown("### 🛠 Refactored Code")
+                st.markdown("### Refactored Code")
                 st.code(st.session_state.refactor_result, language="python")
 
                 # --- Regenerate with Instructions ---
@@ -103,7 +103,7 @@ if url:
                         st.session_state.regenerate_clicked = True
 
                     if st.session_state.regenerate_clicked:
-                        instruction = st.text_input("📌 Instruction to update code", key="instruction_input")
+                        instruction = st.text_input("Instruction to update code", key="instruction_input")
                         if st.button("Apply Modification"):
                             if instruction.strip():
                                 st.session_state.refactor_result = optimize_refactored_code(
