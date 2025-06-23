@@ -21,21 +21,30 @@ def extract_code_block(text):
     match = re.search(r"```(?:python)?\s*(.*?)```", text, re.DOTALL)
     return match.group(1).strip() if match else text.strip()
 
-def refactor_code_chunk(client, code_chunk, python_version="python3"):
+def refactor_code_chunk(client, code_chunk, python_version):
     messages = [
         {
             "role": "system",
             "content": (
-                f"You are a Python expert. Refactor the following code into clean, modern {python_version} syntax.\n"
-                "Return ONLY the pure refactored code. DO NOT include markdown formatting (like ```), comments, or explanations.\n"
-                "Do NOT include lists of changes, analysis, or any extra text. Just return clean code only."
+                f"You are an expert Python developer and compatibility engineer.\n\n"
+                f"Your job is to refactor code to run cleanly on Python {python_version}. The goal is to:\n"
+                f"1. Refactor code using best practices and syntax compatible with Python {python_version}.\n"
+                f"2. Update deprecated or removed syntax, functions, and standard libraries.\n"
+                f"3. Modify or replace third-party package imports if they are incompatible with Python {python_version}.\n"
+                f"4. Only use packages and versions that are available and known to work with Python {python_version}.\n"
+                f"5. Ensure the final code is fully runnable on Python {python_version} without modification.\n\n"
+                f"DO NOT:\n"
+                f"- Add explanations, markdown (e.g., triple backticks), or comments.\n"
+                f"- Return anything other than the clean refactored code.\n\n"
+                f"Output must be ONLY the working Python {python_version} code."
             )
         },
         {
             "role": "user",
-            "content": f"Refactor this Python code:\n\n{code_chunk}"
+            "content": f"Refactor this Python code for Python {python_version}:\n\n{code_chunk}"
         }
     ]
+
 
     response = client.chat.completions.create(
         model="llama-3.1-8b-instant",

@@ -3,6 +3,7 @@ import tempfile
 import os
 import sys
 import shutil
+import platform
 
 def validate_requirements_and_run_code(requirements_text: str, python_code_file: str, python_version: str = None):
     if python_version:
@@ -37,25 +38,39 @@ def validate_requirements_and_run_code(requirements_text: str, python_code_file:
         pip_path = os.path.join(venv_dir, "bin", "pip") if os.name != "nt" else os.path.join(venv_dir, "Scripts", "pip.exe")
         python_path = os.path.join(venv_dir, "bin", "python") if os.name != "nt" else os.path.join(venv_dir, "Scripts", "python.exe")
 
-        # Step 2: Install dependencies
+        # Step 2: Determine the Python version of the created venv
         try:
-            # subprocess.run([pip_path, "install", "--upgrade", "pip"], check=True)
+            result = subprocess.run([python_path, "-c", "import sys; print(sys.version_info.major, sys.version_info.minor)"],
+                                    capture_output=True, text=True, check=True)
+            major_minor = tuple(map(int, result.stdout.strip().split()))
+        except Exception as e:
+            return False, f"Failed to detect Python version: {e}", []
+
+        # Step 3: Upgrade setuptools if Python 3.12+
+        if major_minor >= (3, 12):
+            try:
+                subprocess.run([pip_path, "install", "--upgrade", "setuptools"], check=True)
+            except subprocess.CalledProcessError:
+                return False, "Failed to install or upgrade setuptools (needed for Python 3.12+).", []
+
+        # Step 4: Install dependencies
+        try:
             subprocess.run([pip_path, "install", "-r", requirements_file], check=True)
         except subprocess.CalledProcessError:
             return False, "Failed to install one or more packages.", []
 
-        # Step 3: Run the Python script inside the virtual environment
+        # Step 5: Run the Python script inside the virtual environment
         try:
             result = subprocess.run([python_path, test_script_file], check=True, capture_output=True, text=True)
             script_output = result.stdout.strip()
         except subprocess.CalledProcessError as e:
             return False, f"Script execution failed:\n{e.stderr.strip()}", []
 
-        # Step 4: List installed packages
+        # Step 6: List installed packages
         try:
             result = subprocess.run([pip_path, "list"], stdout=subprocess.PIPE, check=True, text=True)
             installed_packages = result.stdout.strip().splitlines()[2:]  # Skip headers
         except subprocess.CalledProcessError:
             installed_packages = []
 
-        return True, f"All good. Script ran successfully.\n\nOutput:\n{script_output}", installed_packages
+        return True, f"✅ Script ran successfully.\n\nOutput:\n{script_output}", installed_packages

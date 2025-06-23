@@ -11,9 +11,15 @@ def generate_updated_dependencies(client, requirements_text, python_version, cod
                 "Your job is to:\n"
                 "1. Analyze the code to determine which packages are actually required (based on imports).\n"
                 "2. Remove any unused or deprecated packages.\n"
-                "3. Return only the names of required external packages needed to run the code, excluding standard libraries.\n"
-                "4. Do NOT include version numbers.\n"
-                "5. Do NOT include any explanations, formatting, markdown, or extra text — just the list of required packages, one per line."
+                "3. Return the updated list of required packages **with correct version numbers** that are:\n"
+                "   - Available on PyPI\n"
+                "   - Compatible with the specified Python version\n"
+                "   - Do not rely on removed or deprecated standard libraries (e.g., distutils in Python 3.12+)\n"
+                "4. Ensure any package that depends on `distutils` works properly by:\n"
+                "   - Using modern alternatives or newer versions that do not require it explicitly\n"
+                "   - Ensuring `setuptools` is included if needed to support legacy builds\n\n"
+                "Return ONLY the updated requirements.txt — one package per line, with valid version numbers.\n"
+                "Do NOT include explanations, markdown, or extra text."
             )
         },
         {
@@ -22,10 +28,12 @@ def generate_updated_dependencies(client, requirements_text, python_version, cod
                 f"Target Python version: {python_version}\n\n"
                 f"Current requirements.txt:\n{requirements_text}\n\n"
                 f"Python code to analyze:\n{code}\n\n"
-                "Now return only the updated list of required packages — one per line, no version numbers, no explanation."
+                "Now return the updated list of required packages — one per line with version numbers, and make sure all are installable for the given Python version."
             )
         }
     ]
+
+
 
     response = client.chat.completions.create(
         model="llama3-70b-8192",
